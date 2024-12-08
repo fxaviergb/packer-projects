@@ -14,3 +14,37 @@ crash.log
 
 # For built boxes
 *.box
+
+
+# Visual Studio Code
+.vscode/
+.vscode/*
+
+# Vagrant
+.vagrant/
+.vagrant/*
+
+# Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de Log
+*.log
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp
+*~
+
+# Node.js (por si se usa en el proyecto)
+node_modules/
+
+# Python (por si se usa en el proyecto)
+__pycache__/
+*.pyc
+*.pyo
+
+# Otros IDEs
+.idea/
+*.iml
