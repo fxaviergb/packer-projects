@@ -1,9 +1,9 @@
 # Note! 
-# This template uses "~/.aws/credentials" to define permissions in order to enable the http ports: 80 and 443
-# Is not working
+# This template uses a pre-configured "iam_instance_profile" to define instance permissions 
+# Execute the AWS-CLI inside AMI to create a security group in order to enable the http ports: 80 and 443
+# Testing the result, invoke "curl http://<PUBLIC_IP>/hello"
 
 # This block defines the required plugins for the Packer build.
-# The Amazon plugin is specified with its source and version to ensure compatibility.
 packer {
   required_plugins {
     amazon = {
@@ -18,77 +18,62 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-variable "ami_base" {
+variable "aws_ami_base" {
   default = "ami-042e8287309f5df03" # Ubuntu Server 20.04 LTS in the us-east-1 region
 }
 
-variable "home" {
-  default = "/home/fxaviergb"
+variable "aws_iam_instance_profile" {
+  default = "my-ec2-role" # Insert the iam instance profile pre-configured !!!IMPORTANT
 }
 
 # Configuración de Packer
-source "amazon-ebs" "ubuntu-nodejs" {
+source "amazon-ebs" "nginx-nodejs-ubuntu" {
   region           = var.aws_region
   instance_type    = "t2.micro"
-  ami_name         = "ubuntu-nodejs-nginx-ami-{{timestamp}}"
-  source_ami       = var.ami_base
+  ami_name         = "nginx-nodejs-ubuntu-ami-{{timestamp}}"
+  source_ami       = var.aws_ami_base
   ssh_username     = "ubuntu"
   associate_public_ip_address = true
+  iam_instance_profile = var.aws_iam_instance_profile
 }
 
-# Bloque de construcción
+# Builders
 build {
-  sources = ["source.amazon-ebs.ubuntu-nodejs"]
+  sources = ["source.amazon-ebs.nginx-nodejs-ubuntu"]
 
-  # Provisioner para copiar credenciales AWS
-  provisioner "file" {
-    source      = "${var.home}/.aws/credentials" # Archivo local de credenciales en el directorio del usuario
-    destination = "/home/ubuntu/.aws/credentials"
-
-    # Ejecutar este provisioner solo en AWS
-    only = ["amazon-ebs.ubuntu-nodejs"]
-  }
-
-
-  # Provisioner que configura las reglas del grupo de seguridad
+  # Provisioner that configure the AWS security group rules
   provisioner "shell" {
-    only = ["amazon-ebs.ubuntu-nodejs"]
-
+    only = ["amazon-ebs.nginx-nodejs-ubuntu"]
+    
     inline = [
-      # Crear directorio de configuración de AWS si no existe
-      #"if [ ! -d /home/ubuntu/.aws ]; then mkdir -p /home/ubuntu/.aws; fi",
-      #"mv /home/ubuntu/.aws/credentials /home/ubuntu/.aws/credentials",
-      
-      # Instalar AWS CLI
+      # Install AWS CLI
       "sudo apt-get install -y curl unzip",
       "curl \"https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip\" -o \"awscliv2.zip\"",
       "unzip awscliv2.zip",
       "sudo ./aws/install",
       "aws --version",
-      
-      # Obtener el ID de la instancia
+      # Get instance ID
       "INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id || { echo 'Error fetching INSTANCE_ID'; exit 1; })",
       "echo INSTANCE_ID=$INSTANCE_ID",
-      
-      # Obtener el ID del grupo de seguridad
+      # Get security group ID
       "SG_ID=$(aws ec2 describe-instances --instance-id $INSTANCE_ID --region us-east-1 --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' --output text || { echo 'Error fetching SG_ID'; exit 1; })",
       "echo SG_ID=$SG_ID",
-      
-      # Agregar reglas de ingreso
+      # Add ingress rules to security group
       "aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0 || { echo 'Error authorizing ingress for port 80'; exit 1; }",
       "aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 443 --cidr 0.0.0.0/0 || { echo 'Error authorizing ingress for port 443'; exit 1; }"
     ]
   }
 
-  # Provisioner que instala Node.js y configura la aplicación
+
+  # Provisioner that install Node.js and make the app configuration
   provisioner "shell" {
     inline = [
       "sudo apt-get update -y",
       "sudo apt-get upgrade -y",
-      # Instalar Node.js
+      # Install Node.js
       "curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -",
       "sudo apt-get install -y nodejs",
-      # Crear aplicación Node.js
+      # Create a Node.js app
       "mkdir -p /home/ubuntu/app",
       "cat <<EOF > /home/ubuntu/app/server.js",
       "const http = require('http');",
@@ -103,7 +88,7 @@ build {
       "});",
       "server.listen(3000, () => console.log('Server running on port 3000'));",
       "EOF",
-      # Instalar y configurar NGINX
+      # Install and configure NGINX
       "sudo apt-get install -y nginx",
       "sudo rm /etc/nginx/sites-enabled/default",
       "cat <<EOF | sudo tee /etc/nginx/sites-available/app",
@@ -122,9 +107,9 @@ build {
       "EOF",
       "sudo ln -s /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app",
       "sudo systemctl restart nginx",
-      # Configurar permisos y ejecutar la aplicación Node.js
+      # Configure NodeJS app permissions and execute
       "sudo chown -R ubuntu:ubuntu /home/ubuntu/app",
-      "node /home/ubuntu/app/server.js &",
+      "node /home/ubuntu/app/server.js &"
     ]
   }
 }

@@ -94,14 +94,16 @@ packer-projects/
 │   ├── packer-aws-template.pkr.hcl
 │   ├── README.md
 ├── packer-nginx-nodejs-multicloud/
-│   ├── ubuntu-nodejs-ami.pkr.hcl
+│   ├── nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl
+│   ├── nginx-nodejs-ubuntu-ami-with-security-group.pkr.hcl
 │   ├── .gitignore
 │   ├── LICENSE
 │   ├── README.md
 ```
 
 - **`packer-aws-template.pkr.hcl`:** Base configuration for creating AMIs on AWS.
-- **`ubuntu-nodejs-ami.pkr.hcl`:** Customized configuration for installing NGINX and Node.js.
+- **`nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl`:** Customized configuration for installing NGINX and Node.js using an IAM instance profile.
+- **`nginx-nodejs-ubuntu-ami-with-security-group.pkr.hcl`:** Customized configuration for installing NGINX and Node.js using an AWS security group.
 
 ## How to Use This Repository
 
@@ -113,17 +115,42 @@ packer-projects/
 
 2. Initialize Packer:
    ```bash
-   packer init ubuntu-nodejs-ami.pkr.hcl
+   packer init nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl
    ```
 
 3. Validate the configuration:
    ```bash
-   packer validate ubuntu-nodejs-ami.pkr.hcl
+   packer validate nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl
    ```
 
 4. Build the image:
    ```bash
-   packer build ubuntu-nodejs-ami.pkr.hcl
+   packer build nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl
+   ```
+
+## Test
+
+After launching an EC2 instance using the created AMI, follow these steps to test the Node.js application:
+
+1. **Obtain the Public IP Address of the Instance**:
+   Go to the AWS Management Console, navigate to the EC2 section, and find the public IP address of your instance.
+
+2. **Access the Application**:
+   - Open your web browser and go to `http://<PUBLIC_IP>` to verify that NGINX is correctly proxying traffic to the Node.js application.
+   - Test the Node.js application endpoint by navigating to `http://<PUBLIC_IP>/hello`. You should see the response:
+     ```
+     World
+     ```
+
+3. **Using `curl` for Testing**:
+   Alternatively, you can use the `curl` command to test the application:
+   ```bash
+   curl http://<PUBLIC_IP>/hello
+   ```
+
+   The expected output is:
+   ```
+   World
    ```
 
 ## License

@@ -15,8 +15,9 @@ This repository contains a Packer template for creating a custom Amazon Machine 
 Before using this template, ensure that you have:
 
 1. An AWS account and credentials configured.
-2. An **IAM Role** (e.g., `my-ec2-role`) with the necessary permissions to manage EC2 instances and security groups.
-3. [Packer](https://www.packer.io/downloads) installed on your local machine.
+2. [Packer](https://www.packer.io/downloads) installed on your local machine.
+3. An **IAM Role** (e.g., `my-ec2-role`) with the necessary permissions to manage EC2 instances and security groups (needed in `nginx-nodejs-ubuntu-ami-with-iam-instance-profile` template).
+4. An **EC2 Security Group ID** (e.g., `sg-21wqsxxxxx`) with ingress rules to acces HTTP 80 port (needed in `nginx-nodejs-ubuntu-ami-with-security-group` template).
 
 ## AWS Credentials
 
@@ -116,7 +117,6 @@ After launching an EC2 instance using the created AMI, follow these steps to tes
 The template dynamically configures the following ingress rules for the instance's security group:
 
 - **Port 80**: Enables HTTP traffic from all IP addresses (`0.0.0.0/0`).
-- **Port 443**: Enables HTTPS traffic from all IP addresses (`0.0.0.0/0`).
 
 ## License
 
