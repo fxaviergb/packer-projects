@@ -1,123 +1,102 @@
 
-# Packer Template for NGINX and Node.js Deployment on Ubuntu
+# Packer Template: Nginx and Node.js on AWS
 
-This repository contains a Packer template for creating a custom Amazon Machine Image (AMI) that sets up an Ubuntu server with NGINX and Node.js. The template also configures security group rules to enable HTTP (port 80) and HTTPS (port 443) traffic.
+This repository contains a Packer template to build an Amazon Machine Image (AMI) with Nginx, Node.js, and PM2 installed. The template uses shell scripts to automate the provisioning and configuration of the environment.
 
-## Key Features
+## Repository Structure
 
-- Uses an **IAM Instance Profile** to define permissions for enabling HTTP and HTTPS ports.
-- Installs and configures **Node.js** with a sample application.
-- Installs and configures **NGINX** as a reverse proxy for the Node.js application.
-- Configures security group ingress rules dynamically during the build process.
+```
+packer-nginx-nodejs-multicloud/
+├── scripts/
+│   ├── deploy-aws-instance.sh   # Deployment script
+│   ├── setup-nginx.sh           # Script to install and configure Nginx
+│   ├── setup-node.sh            # Script to install Node.js
+│   ├── setup-pm2.sh             # Script to install and configure PM2
+│   └── nginx-nodejs-ubuntu-ami-multicloud.json  # Packer template for multicloud
+├── README.md                    # Project documentation
+```
 
 ## Prerequisites
 
-Before using this template, ensure that you have:
+1. **Install Packer**: Ensure that Packer is installed on your local machine.
 
-1. An AWS account and credentials configured.
-2. [Packer](https://www.packer.io/downloads) installed on your local machine.
-3. An **IAM Role** (e.g., `my-ec2-role`) with the necessary permissions to manage EC2 instances and security groups (needed in `nginx-nodejs-ubuntu-ami-with-iam-instance-profile` template).
-4. An **EC2 Security Group ID** (e.g., `sg-21wqsxxxxx`) with ingress rules to acces HTTP 80 port (needed in `nginx-nodejs-ubuntu-ami-with-security-group` template).
+   - [Packer installation guide](https://developer.hashicorp.com/packer/downloads)
 
-## AWS Credentials
+2. **AWS Access**: Set up your AWS credentials using one of the methods described in the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
 
-The template automatically uses AWS credentials stored in the `~/.aws/credentials` file, created by the AWS CLI. Ensure you have the AWS CLI installed and configured on your system:
+3. **Scripts**: Ensure all scripts in the `scripts/` directory are executable.
 
-1. Install the AWS CLI by following the [official guide](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html).
-2. Run the following command to configure your credentials:
    ```bash
-   aws configure
+   chmod +x scripts/*.sh
    ```
-3. Provide your AWS Access Key ID, Secret Access Key, region, and output format when prompted. The credentials will be saved in the `~/.aws/credentials` file.
 
-## How the Template Works
+## How It Works
 
-1. **Source Configuration**:
-   The `amazon-ebs` source is used to create an AMI based on an Ubuntu 20.04 LTS base image.
+### Template Overview
 
-2. **Shell Provisioners**:
-   - The first provisioner installs the AWS CLI and configures security group rules for ports 80 and 443.
-   - The second provisioner sets up Node.js, creates a sample Node.js application, and configures NGINX as a reverse proxy.
+- **Builders**: The template uses the `amazon-ebs` builder to create an AMI from a base image.
+- **Provisioners**: The provisioners execute shell scripts to:
+  - Install Node.js (`setup-node.sh`)
+  - Configure Nginx as a reverse proxy (`setup-nginx.sh`)
+  - Install and set up PM2 for process management (`setup-pm2.sh`)
+- **Post-processors**: A local shell script (`deploy-aws-instance.sh`) is run after building the AMI.
 
-3. **Build Block**:
-   The `build` block ties everything together and generates a custom AMI with the desired setup.
+### Configuration
 
-## Deployment Steps
+The Packer template is located in `nginx-nodejs-ubuntu-ami-multicloud.json` and includes the following variables:
 
-Follow these steps to deploy the template:
+- **`aws_region`**: Specifies the AWS region to use (default: `us-east-1`).
+- **`aws_ami_base`**: Defines the base AMI (default: `ami-042e8287309f5df03`).
 
-### 1. Clone the Repository
+## Steps to Build the AMI
 
-```bash
-git clone <REPOSITORY-URL>
-cd <REPOSITORY-FOLDER>
-```
+1. **Validate the Template**
 
-### 2. Initialize Packer
-
-Ensure that all required plugins are installed:
-
-```bash
-packer init <template.pkr.hcl>
-```
-
-### 3. Validate the Template
-
-Check the template syntax to ensure there are no errors:
-
-```bash
-packer validate <template.pkr.hcl>
-```
-
-### 4. Build the AMI
-
-Run the build command to create the AMI:
-
-```bash
-packer build <template.pkr.hcl>
-```
-
-### 5. Deploy the AMI
-
-After the build process completes, use the AMI ID generated by Packer to launch an EC2 instance from the AWS Management Console or CLI.
-
-## Testing the Deployed Node.js Application
-
-After launching an EC2 instance using the created AMI, follow these steps to test the Node.js application:
-
-1. **Obtain the Public IP Address of the Instance**:
-   Go to the AWS Management Console, navigate to the EC2 section, and find the public IP address of your instance.
-
-2. **Access the Application**:
-   - Open your web browser and go to `http://<PUBLIC_IP>` to verify that NGINX is correctly proxying traffic to the Node.js application.
-   - Test the Node.js application endpoint by navigating to `http://<PUBLIC_IP>/hello`. You should see the response:
-     ```
-     World
-     ```
-
-3. **Using `curl` for Testing**:
-   Alternatively, you can use the `curl` command to test the application:
    ```bash
-   curl http://<PUBLIC_IP>/hello
+   packer validate nginx-nodejs-ubuntu-ami-multicloud.json
    ```
 
-   The expected output is:
+2. **Build the AMI**
+
+   ```bash
+   packer build -var 'aws_region=us-east-1' -var 'aws_ami_base=ami-042e8287309f5df03' nginx-nodejs-ubuntu-ami-multicloud.json
    ```
-   World
+
+3. **Deploy the AMI**
+   Once the AMI is built, you can use the deployment script to launch an EC2 instance with the created AMI:
+
+   ```bash
+   ./scripts/deploy-aws-instance.sh
    ```
 
-## Sample Configuration Overview
+## Script Details
 
-- **AMI Base**: Ubuntu 20.04 LTS
-- **Instance Type**: `t2.micro` (modifiable in the template)
-- **IAM Instance Profile**: `my-ec2-role` (replace with your IAM role name)
+### `setup-node.sh`
 
-## Security Group Configuration
+- Updates and upgrades the system packages.
+- Installs Node.js and npm using the NodeSource setup script.
 
-The template dynamically configures the following ingress rules for the instance's security group:
+### `setup-nginx.sh`
 
-- **Port 80**: Enables HTTP traffic from all IP addresses (`0.0.0.0/0`).
+- Installs Nginx.
+- Configures Nginx as a reverse proxy to forward traffic to the Node.js application.
+
+### `setup-pm2.sh`
+
+- Installs PM2 globally using npm.
+- Starts the Node.js application using PM2.
+- Configures PM2 to restart the application on system reboot.
+
+### `deploy-aws-instance.sh`
+
+- Automates the deployment of an EC2 instance using the created AMI.
+- Configures networking and security groups for the instance.
+
+## Testing the Deployment
+
+1. After deployment, access the server's public IP in your browser.
+2. Ensure the application is running and accessible through Nginx.
 
 ## License
 
-This repository is licensed under the MIT License. See the `LICENSE` file for more details.
+This project is licensed under the MIT License.

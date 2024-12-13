@@ -1,0 +1,39 @@
+{
+  "variables": {
+    "aws_region": "us-east-1",
+    "aws_ami_base": "ami-042e8287309f5df03"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "{{user `aws_region`}}",
+      "instance_type": "t2.micro",
+      "ami_name": "nginx-nodejs-ubuntu-ami-{{timestamp}}",
+      "source_ami": "{{user `aws_ami_base`}}",
+      "ssh_username": "ubuntu",
+      "associate_public_ip_address": true
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "script": "scripts/setup-node.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/setup-nginx.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/setup-pm2.sh"
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "shell-local",
+      "scripts": [
+        "scripts/deploy-aws-instance.sh"
+      ]
+    }
+  ]
+}
