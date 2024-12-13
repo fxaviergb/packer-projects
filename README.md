@@ -86,31 +86,12 @@ Below are some of the most important commands for working with Packer:
   packer inspect <file.pkr.hcl>
   ```
 
-## Repository Structure
-
-```
-packer-projects/
-├── packer-aws-nginx-deploy/
-│   ├── packer-aws-template.pkr.hcl
-│   ├── README.md
-├── packer-nginx-nodejs-multicloud/
-│   ├── nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl
-│   ├── nginx-nodejs-ubuntu-ami-with-security-group.pkr.hcl
-│   ├── .gitignore
-│   ├── LICENSE
-│   ├── README.md
-```
-
-- **`packer-aws-template.pkr.hcl`:** Base configuration for creating AMIs on AWS.
-- **`nginx-nodejs-ubuntu-ami-with-iam-instance-profile.pkr.hcl`:** Customized configuration for installing NGINX and Node.js using an IAM instance profile.
-- **`nginx-nodejs-ubuntu-ami-with-security-group.pkr.hcl`:** Customized configuration for installing NGINX and Node.js using an AWS security group.
-
 ## How to Use This Repository
 
 1. Clone the repository:
    ```bash
    git clone <REPOSITORY-URL>
-   cd packer-projects/packer-nginx-nodejs-multicloud
+   cd packer-projects/packer-nginx-nodejs
    ```
 
 2. Initialize Packer:
