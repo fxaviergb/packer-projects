@@ -1,30 +1,36 @@
 
-# Packer Template: Nginx and Node.js on AWS
+# Project: Multicloud Nginx and Node.js Images with Packer
 
-This repository contains a Packer template to build an Amazon Machine Image (AMI) with Nginx, Node.js, and PM2 installed. The template uses shell scripts to automate the provisioning and configuration of the environment.
+This project uses Packer to create pre-configured virtual machine images with Nginx, Node.js, and PM2, tailored for deployments in multicloud environments such as AWS and Azure. It is ideal for those looking to standardize their deployment environments.
 
-## Repository Structure
+## Project Structure
 
-```
-packer-nginx-nodejs-multicloud/
-├── scripts/
-│   ├── deploy-aws-instance.sh   # Deployment script
-│   ├── setup-nginx.sh           # Script to install and configure Nginx
-│   ├── setup-node.sh            # Script to install Node.js
-│   ├── setup-pm2.sh             # Script to install and configure PM2
-│   └── nginx-nodejs-ubuntu-ami-multicloud.json  # Packer template for multicloud
-├── README.md                    # Project documentation
-```
+- **`nginx-nodejs-ubuntu-image-multicloud.json`**: Main Packer configuration file that defines the image creation process.
+- **`scripts/`**: Contains the scripts used during the creation and configuration of the images:
+  - **`setup-nginx.sh`**: Installs and configures Nginx.
+  - **`setup-node.sh`**: Installs Node.js and its dependencies.
+  - **`setup-pm2.sh`**: Configures PM2 for Node.js process management.
+  - **`deploy-aws-instance.sh`**: Deploys an instance on AWS using the created image.
+  - **`deploy-azure-instance.sh`**: Deploys an instance on Azure using the created image.
+- **`credentials.json`**: File for managing cloud access credentials. Must be properly configured before using the project.
 
 ## Prerequisites
 
-1. **Install Packer**: Ensure that Packer is installed on your local machine.
+1. **Packer** installed on your system.
+2. **Cloud credentials** configured:
+   - AWS: `~/.aws/credentials` file or environment variables configured.
+   - Azure: `credentials.json` file or authenticated Azure CLI.
+3. **Access to cloud accounts** with permissions to create resources.
+4. **Install Packer Plugins**: Ensure the following plugins are installed on your local machine.
 
-   - [Packer installation guide](https://developer.hashicorp.com/packer/downloads)
+   ```bash
+   packer plugins install github.com/hashicorp/amazon
+   packer plugins install github.com/hashicorp/azure
+   ```
 
-2. **AWS Access**: Set up your AWS credentials using one of the methods described in the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
+5. **AWS Access**: Set up your AWS credentials using one of the methods described in the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
 
-3. **Scripts**: Ensure all scripts in the `scripts/` directory are executable.
+6. **Scripts**: Ensure all scripts in the `scripts/` directory are executable.
 
    ```bash
    chmod +x scripts/*.sh
@@ -32,71 +38,87 @@ packer-nginx-nodejs-multicloud/
 
 ## How It Works
 
-### Template Overview
+1. Packer uses the `nginx-nodejs-ubuntu-image-multicloud.json` configuration file to create a base Ubuntu image.
+2. During the process, it executes the scripts in the `scripts/` directory to install and configure Nginx, Node.js, and PM2.
+3. The resulting images are ready to be used as a base for deployments on AWS and Azure.
 
-- **Builders**: The template uses the `amazon-ebs` builder to create an AMI from a base image.
-- **Provisioners**: The provisioners execute shell scripts to:
-  - Install Node.js (`setup-node.sh`)
-  - Configure Nginx as a reverse proxy (`setup-nginx.sh`)
-  - Install and set up PM2 for process management (`setup-pm2.sh`)
-- **Post-processors**: A local shell script (`deploy-aws-instance.sh`) is run after building the AMI.
+## Steps to Execute the Project
 
-### Configuration
+### 1. Configure Credentials
 
-The Packer template is located in `nginx-nodejs-ubuntu-ami-multicloud.json` and includes the following variables:
+- **AWS**: Ensure `~/.aws/credentials` is configured with a valid profile.
+- **Azure**: Modify the `credentials.json` file with the appropriate credentials or ensure you are authenticated with the Azure CLI.
 
-- **`aws_region`**: Specifies the AWS region to use (default: `us-east-1`).
-- **`aws_ami_base`**: Defines the base AMI (default: `ami-042e8287309f5df03`).
+### 2. Validate the Packer Configuration
 
-## Steps to Build the AMI
+Run:
 
-1. **Validate the Template**
+```bash
+packer validate nginx-nodejs-ubuntu-image-multicloud.json
+```
 
+This ensures the configuration file is valid.
+
+### 3. Build the Image
+
+For both clouds:
+
+```bash
+packer build -var-file=credentials.json nginx-nodejs-ubuntu-image-multicloud.json
+```
+
+For AWS:
+
+```bash
+packer build -only=amazon-ebs nginx-nodejs-ubuntu-image-multicloud.json
+```
+
+For Azure:
+
+```bash
+packer build -var-file=credentials.json -only=azure-arm nginx-nodejs-ubuntu-image-multicloud.json
+```
+
+### 4. Deploy Instances
+
+The following deployment scripts are invoked in Packer’s post-processors and do not need to be run manually.
+
+- AWS: Use the `deploy-aws-instance.sh` script to deploy an instance on AWS.
+
+```bash
+bash scripts/deploy-aws-instance.sh
+```
+
+- Azure: Use the `deploy-azure-instance.sh` script to deploy an instance on Azure.
+
+```bash
+bash scripts/deploy-azure-instance.sh
+```
+
+## Testing the Results
+
+After launching an instance using the created image, follow these steps to test the Node.js application:
+
+1. **Get the Public IP Address of the Instance**:
+   For example, on AWS, go to the AWS Management Console, navigate to the EC2 section, and find the public IP address of your instance.
+
+2. **Access the Application**: Open your web browser and go to `http://<PUBLIC_IP>` to verify that Nginx is correctly redirecting traffic to the Node.js application. You should see the following response:
+
+     ```
+     Hello WORLD. Reporting from Fernando Xavier!
+     ```
+
+3. **Use `curl` to Test**:
+   Alternatively, you can use the `curl` command to test the application:
    ```bash
-   packer validate nginx-nodejs-ubuntu-ami-multicloud.json
+   curl http://<PUBLIC_IP>/
    ```
 
-2. **Build the AMI**
-
-   ```bash
-   packer build -var 'aws_region=us-east-1' -var 'aws_ami_base=ami-042e8287309f5df03' nginx-nodejs-ubuntu-ami-multicloud.json
+   The expected output is:
+   ```
+   Hello WORLD. Reporting from Fernando Xavier!
    ```
 
-3. **Deploy the AMI**
-   Once the AMI is built, you can use the deployment script to launch an EC2 instance with the created AMI:
+## Conclusion
 
-   ```bash
-   ./scripts/deploy-aws-instance.sh
-   ```
-
-## Script Details
-
-### `setup-node.sh`
-
-- Updates and upgrades the system packages.
-- Installs Node.js and npm using the NodeSource setup script.
-
-### `setup-nginx.sh`
-
-- Installs Nginx.
-- Configures Nginx as a reverse proxy to forward traffic to the Node.js application.
-
-### `setup-pm2.sh`
-
-- Installs PM2 globally using npm.
-- Starts the Node.js application using PM2.
-- Configures PM2 to restart the application on system reboot.
-
-### `deploy-aws-instance.sh`
-
-- Automates the deployment of an EC2 instance using the created AMI.
-- Configures networking and security groups for the instance.
-
-## Testing the Deployment
-
-1. After deployment, access the server's public IP in your browser.
-2. Ensure the application is running and accessible through Nginx.
-
-## License
-
-This project is licensed under the MIT License.
+This project simplifies the creation of standardized environments for web applications in public clouds. The included scripts and configurations enable efficient and replicable deployments.

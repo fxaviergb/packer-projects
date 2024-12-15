@@ -1,0 +1,51 @@
+{
+  "variables": {
+    "azure_location": "East US",
+    "azure_resource_group": "packer-deploy-resource-group",
+    "ARM_CLIENT_ID": "",
+    "ARM_CLIENT_SECRET": "",
+    "ARM_TENANT_ID": "",
+    "ARM_SUBSCRIPTION_ID": ""
+  },
+  "builders": [
+    {
+      "type": "azure-arm",
+      "client_id": "{{user `ARM_CLIENT_ID`}}",
+      "client_secret": "{{user `ARM_CLIENT_SECRET`}}",
+      "tenant_id": "{{user `ARM_TENANT_ID`}}",
+      "subscription_id": "{{user `ARM_SUBSCRIPTION_ID`}}",
+      "managed_image_resource_group_name": "{{user `azure_resource_group`}}",
+      "managed_image_name": "nginx-nodejs-ubuntu-image-{{timestamp}}",
+      "location": "westus2",
+      "vm_size": "Standard_B1s",
+      "os_type": "Linux",
+      "image_publisher": "Canonical",
+      "image_offer": "0001-com-ubuntu-server-jammy",
+      "image_sku": "22_04-lts-gen2",
+      "communicator": "ssh",
+      "ssh_username": "ubuntu"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "script": "scripts/setup-node.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/setup-nginx.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/setup-pm2.sh"
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "shell-local",
+      "scripts": [
+        "scripts/deploy-azure-instance.sh"
+      ]
+    }
+  ]
+}

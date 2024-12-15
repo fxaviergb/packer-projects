@@ -1,3 +1,7 @@
+# Credentials
+credentials-local.json
+test-azure.json
+
 # Cache objects
 packer_cache/
 
